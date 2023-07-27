@@ -12,20 +12,22 @@ module.exports = (sequelize) => {
       title: {
         type: DataTypes.STRING,
         allowNull: false,
-        // Validation rules...
+        validate: {
+          notEmpty: true,
+        },
       },
       description: {
         type: DataTypes.TEXT,
         allowNull: false,
-        // Validation rules...
+        validate: {
+          notEmpty: true,
+        },
       },
       estimatedTime: {
         type: DataTypes.STRING,
-        // Validation rules...
       },
       materialsNeeded: {
         type: DataTypes.STRING,
-        // Validation rules...
       },
     },
     { sequelize }

@@ -1,60 +1,88 @@
-'use strict';
-
-// load modules
 const express = require('express');
-const morgan = require('morgan');
-
-//Use Sequelize's authenticate function to test the database connection. A message should be logged to the console informing the user that the connection was successful or that there was an error.
-const { sequelize } = require('./models');
-(async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Connection to the database successful!');
-  } catch (error) {
-    console.error('Error connecting to the database: ', error);
-  }
-})();
-
-
-// variable to enable global error logging
-const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
-
-// create the Express app
+const bcrypt = require('bcrypt');
+const { User, Course } = require('./models');
 const app = express();
+const router = express.Router();
 
-// setup morgan which gives us http request logging
-app.use(morgan('dev'));
 
-// setup a friendly greeting for the root route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to the REST API project!',
-  });
-});
+// Middleware to parse JSON
+app.use(express.json());
 
-// send 404 if no other route matched
-app.use((req, res) => {
-  res.status(404).json({
-    message: 'Route Not Found',
-  });
-});
+const auth = async (req, res, next) => {
+  let message = null;
 
-// setup a global error handler
-app.use((err, req, res, next) => {
-  if (enableGlobalErrorLogging) {
-    console.error(`Global error handler: ${JSON.stringify(err.stack)}`);
+  // Parse the user's credentials from the Authorization header.
+  // Replace `auth(req)` with your function to parse the header
+  const credentials = parseAuthHeader(req);  
+
+  if (credentials) {
+    const user = await User.findOne({ where: { emailAddress: credentials.name } });
+    if (user) {
+      const authenticated = bcrypt.compareSync(credentials.pass, user.password);
+      if (authenticated) {
+        console.log(`Authentication successful for username: ${user.emailAddress}`);
+        req.currentUser = user;
+      } else {
+        message = `Authentication failure for username: ${user.emailAddress}`;
+      }
+    } else {
+      message = `User not found for username: ${credentials.name}`;
+    }
+  } else {
+    message = 'Auth header not found';
   }
 
-  res.status(err.status || 500).json({
-    message: err.message,
-    error: {},
-  });
+  if (message) {
+    console.warn(message);
+    res.status(401).json({ message: 'Access Denied' });
+  } else {
+    next();
+  }
+};
+
+// User routes
+router.get('/api/users', auth, async (req, res) => {
+  const currentUser = req.currentUser;
+  res.status(200).json(currentUser);
 });
 
-// set our port
-app.set('port', process.env.PORT || 5000);
+router.post('/api/users', async (req, res) => {
+  const newUser = req.body;
+  newUser.password = bcrypt.hashSync(newUser.password, 10);
 
-// start listening on our port
-const server = app.listen(app.get('port'), () => {
-  console.log(`Express server is listening on port ${server.address().port}`);
+  await User.create(newUser);
+  res.status(201).location('/').end();
 });
+
+// Courses routes
+router.get('/api/courses', async (req, res) => {
+  const courses = await Course.findAll({ include: [{ model: User }] });
+  res.status(200).json(courses);
+});
+
+router.get('/api/courses/:id', async (req, res) => {
+  const course = await Course.findByPk(req.params.id, { include: [{ model: User }] });
+  res.status(200).json(course);
+});
+
+// Use the router
+app.use(router);
+
+// Add error handlers, etc.
+function parseAuthHeader(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return null;
+  }
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Basic') {
+    return null;
+  }
+  const credentials = Buffer.from(parts[1], 'base64').toString().split(':');
+  return { name: credentials[0], pass: credentials[1] };
+}
+
+
+// Start the server
+app.listen(5000, () => console.log('Server is running on port 5000'));
+
