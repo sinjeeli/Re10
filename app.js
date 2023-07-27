@@ -4,7 +4,6 @@ const { User, Course } = require('./models');
 const app = express();
 const router = express.Router();
 
-
 // Middleware to parse JSON
 app.use(express.json());
 
@@ -12,7 +11,6 @@ const auth = async (req, res, next) => {
   let message = null;
 
   // Parse the user's credentials from the Authorization header.
-  // Replace `auth(req)` with your function to parse the header
   const credentials = parseAuthHeader(req);  
 
   if (credentials) {
@@ -50,8 +48,23 @@ router.post('/api/users', async (req, res) => {
   const newUser = req.body;
   newUser.password = bcrypt.hashSync(newUser.password, 10);
 
-  await User.create(newUser);
-  res.status(201).location('/').end();
+  try {
+    // Check if a user with the given email address already exists
+    const existingUser = await User.findOne({ where: { emailAddress: newUser.emailAddress } });
+
+    if (existingUser) {
+      // If the user already exists, send a 400 status and an error message
+      res.status(400).json({ message: 'A user with the given email address already exists' });
+    } else {
+      // If the user doesn't exist, create the new user and send a 201 status
+      await User.create(newUser);
+      res.status(201).location('/').end();
+    }
+  } catch(error) {
+    // If there's an error (like a database error), log the error and send a 500 status
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while trying to create the user' });
+  }
 });
 
 // Courses routes
@@ -82,7 +95,5 @@ function parseAuthHeader(req) {
   return { name: credentials[0], pass: credentials[1] };
 }
 
-
 // Start the server
 app.listen(5000, () => console.log('Server is running on port 5000'));
-
