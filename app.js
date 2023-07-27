@@ -84,21 +84,35 @@ router.get('/api/courses/:id', async (req, res) => {
   const course = await Course.findByPk(req.params.id, { include: [{ model: User }] });
   res.status(200).json(course);
 });
-//
+
 router.put('/api/courses/:id', auth, async (req, res) => {
+  // Get the updated title and description from the request body
   const { title, description } = req.body;
 
-  // Validate required fields
-  if (!title || !description) {
-    return res.status(400).json({ error: 'title and description are required.' });
+  // Validate required fields (at least one of them should be provided)
+  if (!title && !description) {
+    return res.status(400).json({ error: 'title or description must be provided for updating the course.' });
   }
 
   try {
-    // Find the course
+    // Find the course by its ID
     const course = await Course.findByPk(req.params.id);
 
-    // Update the course
-    const updatedCourse = await course.update(req.body);
+    if (!course) {
+      // If the course is not found, return a 404 status
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Update the course with the provided data (if any)
+    if (title) {
+      course.title = title;
+    }
+    if (description) {
+      course.description = description;
+    }
+
+    // Save the updated course
+    await course.save();
 
     // Return a 204 status.
     res.status(204).end();
