@@ -125,7 +125,7 @@ router.put('/api/courses/:id', auth, async (req, res) => {
     res.status(204).end();
   } catch (error) {
     if (error instanceof Sequelize.ValidationError) {
-      // If it's a Sequelize validation error, send a 400 status with the error.
+      // send a 400 status with the error.
       res.status(400).json({ error: error.errors });
     } else {
       // If it's an unknown error, send a 500 status.
@@ -161,7 +161,7 @@ router.post('/api/courses', auth, async (req, res) => {
     res.status(201).location(`/api/courses/${createdCourse.id}`).end();
   } catch (error) {
     if (error instanceof Sequelize.ValidationError) {
-      // If it's a Sequelize validation error, send a 400 status with the error.
+      // send a 400 status with the error.
       res.status(400).json({ error: error.errors });
     } else {
       // If it's an unknown error, send a 500 status.
