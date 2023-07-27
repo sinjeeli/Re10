@@ -77,6 +77,144 @@ router.get('/api/courses/:id', async (req, res) => {
   const course = await Course.findByPk(req.params.id, { include: [{ model: User }] });
   res.status(200).json(course);
 });
+//
+router.put('/api/courses/:id', auth, async (req, res) => {
+  const { title, description } = req.body;
+
+  // Validate required fields
+  if (!title || !description) {
+    return res.status(400).json({ error: 'title and description are required.' });
+  }
+
+  try {
+    // Find the course
+    const course = await Course.findByPk(req.params.id);
+
+    // Update the course
+    const updatedCourse = await course.update(req.body);
+
+    // Return a 204 status.
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof Sequelize.ValidationError) {
+      // If it's a Sequelize validation error, send a 400 status with the error.
+      res.status(400).json({ error: error.errors });
+    } else {
+      // If it's an unknown error, send a 500 status.
+      console.error(error);
+      res.status(500).json({ error: 'Server Error' });
+    }
+  }
+});
+//
+
+router.post('/api/courses', auth, async (req, res) => {
+  const { title, description, userId } = req.body;
+
+  // Validate required fields
+  if (!title || !description || !userId) {
+    return res.status(400).json({ error: 'title, description, and userId are required.' });
+  }
+
+  try {
+    const newCourse = {
+      title,
+      description,
+      userId,
+      estimatedTime: req.body.estimatedTime, // these fields are not required, so they can be undefined
+      materialsNeeded: req.body.materialsNeeded,
+    };
+
+    // Create the new course
+    const createdCourse = await Course.create(newCourse);
+
+    // Return a 201 status with a location header to the newly created course.
+    res.status(201).location(`/api/courses/${createdCourse.id}`).end();
+  } catch (error) {
+    if (error instanceof Sequelize.ValidationError) {
+      // If it's a Sequelize validation error, send a 400 status with the error.
+      res.status(400).json({ error: error.errors });
+    } else {
+      // If it's an unknown error, send a 500 status.
+      console.error(error);
+      res.status(500).json({ error: 'Server Error' });
+    }
+  }
+});
+//
+router.delete('/api/courses/:id', auth, async (req, res) => {
+  const course = await Course.findByPk(req.params.id);
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
+
+  // You might also want to check if the user is the creator of the course
+  if (course.userId !== req.currentUser.id) {
+    return res.status(403).json({ message: "You do not have permission to delete this course" });
+  }
+
+  await course.destroy();
+  return res.status(204).end();  // Successfully deleted, no content to return
+});
+app.get('/api/courses', async (req, res) => {
+  const courses = await Course.findAll({
+    attributes: { exclude: ['createdAt', 'updatedAt'] },
+    include: [
+      {
+        model: User,
+        attributes: ['id', 'firstName', 'lastName', 'emailAddress'],
+      },
+    ],
+  });
+  res.json(courses);
+});
+
+app.get('/api/courses/:id', async (req, res) => {
+  const course = await Course.findByPk(req.params.id, {
+    attributes: { exclude: ['createdAt', 'updatedAt'] },
+    include: [
+      {
+        model: User,
+        attributes: ['id', 'firstName', 'lastName', 'emailAddress'],
+      },
+    ],
+  });
+  if (!course) {
+    res.status(404).json({ error: 'Course not found' });
+  } else {
+    res.json(course);
+  }
+});
+//
+app.put('/api/courses/:id', auth, async (req, res) => {
+  const user = req.currentUser;
+  const course = await Course.findByPk(req.params.id);
+
+  if (!course) {
+    res.status(404).json({ error: 'Course not found' });
+  } else if (course.userId !== user.id) {
+    res.status(403).json({ error: 'You are not the owner of this course' });
+  } else {
+    // update the course
+  }
+});
+
+app.delete('/api/courses/:id', auth, async (req, res) => {
+  const user = req.currentUser;
+  const course = await Course.findByPk(req.params.id);
+
+  if (!course) {
+    res.status(404).json({ error: 'Course not found' });
+  } else if (course.userId !== user.id) {
+    res.status(403).json({ error: 'You are not the owner of this course' });
+  } else {
+    // delete the course
+  }
+});
+
+
+
+
 
 // Use the router
 app.use(router);
