@@ -45,21 +45,28 @@ router.get('/api/users', auth, async (req, res) => {
 });
 
 router.post('/api/users', async (req, res) => {
-  const newUser = req.body;
-  newUser.password = bcrypt.hashSync(newUser.password, 10);
+  const { firstName, lastName, emailAddress, password } = req.body;
+  // Check if any required fields are missing
+  if (!firstName || !lastName || !emailAddress || !password) {
+    return res.status(400).json({ error: 'firstName, lastName, emailAddress, and password are required.' });
+  }
 
-  try {
+  // Hash the password
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  //
+
+ try {
     // Check if a user with the given email address already exists
-    const existingUser = await User.findOne({ where: { emailAddress: newUser.emailAddress } });
+    const existingUser = await User.findOne({ where: { emailAddress } });
 
     if (existingUser) {
       // If the user already exists, send a 400 status and an error message
-      res.status(400).json({ message: 'A user with the given email address already exists' });
-    } else {
-      // If the user doesn't exist, create the new user and send a 201 status
-      await User.create(newUser);
-      res.status(201).location('/').end();
+      return res.status(400).json({ message: 'A user with the given email address already exists' });
     }
+
+    // If the user doesn't exist, create the new user and send a 201 status
+    await User.create({ firstName, lastName, emailAddress, password: hashedPassword });
+    res.status(201).location('/').end();
   } catch(error) {
     // If there's an error (like a database error), log the error and send a 500 status
     console.error(error);
