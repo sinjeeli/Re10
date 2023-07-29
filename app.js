@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const { User, Course } = require('./models');
 const app = express();
 const router = express.Router();
+const { sequelize } = require('./models');
+
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -308,6 +310,15 @@ function parseAuthHeader(req) {
   const credentials = Buffer.from(parts[1], 'base64').toString().split(':');
   return { name: credentials[0], pass: credentials[1] };
 }
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Connection to the database has been established successfully.');
+  })
+  .catch(err => {
+    console.error('Unable to connect to the database:', err);
+  });
+//
 
 // Start the server
 app.listen(5000, () => console.log('Server is running on port 5000'));
