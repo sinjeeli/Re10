@@ -10,35 +10,41 @@ const { sequelize } = require('./models');
 app.use(express.json());
 
 const auth = async (req, res, next) => {
-  let message = null;
+  try {
+    let message = null;
 
-  // Parse the user's credentials from the Authorization header.
-  const credentials = parseAuthHeader(req);  
+    // Parse the user's credentials from the Authorization header.
+    const credentials = parseAuthHeader(req);  
 
-  if (credentials) {
-    const user = await User.findOne({ where: { emailAddress: credentials.name } });
-    if (user) {
-      const authenticated = bcrypt.compareSync(credentials.pass, user.password);
-      if (authenticated) {
-        console.log(`Authentication successful for username: ${user.emailAddress}`);
-        req.currentUser = user;
+    if (credentials) {
+      const user = await User.findOne({ where: { emailAddress: credentials.name } });
+      if (user) {
+        const authenticated = bcrypt.compareSync(credentials.pass, user.password);
+        if (authenticated) {
+          console.log(`Authentication successful for username: ${user.emailAddress}`);
+          req.currentUser = user;
+        } else {
+          message = `Authentication failure for username: ${user.emailAddress}`;
+        }
       } else {
-        message = `Authentication failure for username: ${user.emailAddress}`;
+        message = `User not found for username: ${credentials.name}`;
       }
     } else {
-      message = `User not found for username: ${credentials.name}`;
+      message = 'Auth header not found';
     }
-  } else {
-    message = 'Auth header not found';
-  }
 
-  if (message) {
-    console.warn(message);
-    res.status(401).json({ message: 'Access Denied' });
-  } else {
-    next();
+    if (message) {
+      console.warn(message);
+      res.status(401).json({ message: 'Access Denied' });
+    } else {
+      next();
+    }
+  } catch (error) {
+    console.error('An error occurred during authentication:', error);
+    res.status(500).json({ message: 'An error occurred during authentication' });
   }
 };
+
 
 // User routes
 router.get('/api/users', auth, async (req, res) => {
