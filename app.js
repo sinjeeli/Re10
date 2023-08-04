@@ -4,6 +4,9 @@ const { User, Course } = require('./models');
 const app = express();
 const router = express.Router();
 const { sequelize } = require('./models');
+const cors = require('cors'); // Add this line to import cors
+
+app.use(cors()); // Add this line to use cors
 
 
 // Middleware to parse JSON
@@ -98,6 +101,7 @@ router.get('/api/courses/:id', async (req, res) => {
 });
 //
 router.put('/api/courses/:id', auth, async (req, res) => {
+  console.log('Updating course');
   const user = req.currentUser;
   const course = await Course.findByPk(req.params.id);
 
@@ -106,9 +110,11 @@ router.put('/api/courses/:id', auth, async (req, res) => {
   }
 
   if (course.userId !== user.id) {
+    console.log('Current user is not the owner of the course');
+    
     return res.status(403).json({ error: 'You are not the owner of this course' });
   }
-
+  console.log('Received update data:', req.body);
   // Get the updated title and description from the request body
   const { title, description } = req.body;
 
@@ -128,10 +134,11 @@ router.put('/api/courses/:id', auth, async (req, res) => {
 
     // Save the updated course
     await course.save();
-
+    console.log('Course saved successfully');
     // Return a 204 status.
     res.status(204).end();
   } catch (error) {
+    console.error('Error saving course:', error);
     if (error instanceof Sequelize.ValidationError) {
       // send a 400 status with the error.
       res.status(400).json({ error: error.errors });
@@ -292,6 +299,13 @@ app.delete('/api/courses/:id', auth, async (req, res) => {
   } else if (course.userId !== user.id) {
     res.status(403).json({ error: 'You are not the owner of this course' });
   } else {
+    try {
+      await course.destroy();
+      res.status(204).end();
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server Error' });
+    }
     // delete the course
   }
 });
