@@ -4,9 +4,9 @@ const { User, Course } = require('./models');
 const app = express();
 const router = express.Router();
 const { sequelize } = require('./models');
-const cors = require('cors'); // Add this line to import cors
+const cors = require('cors'); // Import cors
 
-app.use(cors()); // Add this line to use cors
+app.use(cors()); // use cors
 
 
 // Middleware to parse JSON
@@ -124,7 +124,7 @@ router.put('/api/courses/:id', auth, async (req, res) => {
   }
 
   try {
-    // Update the course with the provided data (if any)
+    // Update the course with the provided data
     if (title) {
       course.title = title;
     }
@@ -165,7 +165,7 @@ router.post('/api/courses', auth, async (req, res) => {
       title,
       description,
       userId,
-      estimatedTime: req.body.estimatedTime, // these fields are not required, so they can be undefined
+      estimatedTime: req.body.estimatedTime, 
       materialsNeeded: req.body.materialsNeeded,
     };
 
